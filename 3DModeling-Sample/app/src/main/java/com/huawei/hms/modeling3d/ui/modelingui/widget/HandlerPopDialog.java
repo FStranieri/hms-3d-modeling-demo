@@ -17,6 +17,7 @@
 package com.huawei.hms.modeling3d.ui.modelingui.widget;
 
 import android.content.Context;
+import android.content.Intent;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -27,6 +28,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.huawei.cameratakelib.utils.FileUtil;
+import com.huawei.hms.modeling3d.ui.RenderActivity;
 import com.huawei.hms.modelingresource.db.TaskInfoAppDb;
 import com.huawei.hms.modelingresource.db.TaskInfoAppDbUtils;
 import com.huawei.hms.modelingresource.util.Utils;
@@ -49,6 +51,7 @@ public class HandlerPopDialog {
     PopupWindow popupWindow;
     TextView tvDownload;
     TextView tvOpenFolder;
+    TextView tvRender;
     ArrayList<TaskInfoAppDb> dataList;
     public Modeling3dReconstructTaskUtils modeling3dReconstructTaskUtils;
 
@@ -70,12 +73,15 @@ public class HandlerPopDialog {
     private void initView(View contentView) {
         tvDownload = contentView.findViewById(R.id.tv_download);
         tvOpenFolder = contentView.findViewById(R.id.tv_open_folder);
+        tvRender = contentView.findViewById(R.id.tv_render);
         if (appDb.getStatus() == Modeling3dReconstructConstants.ProgressStatus.RECONSTRUCT_COMPLETED) {
             tvDownload.setVisibility(View.VISIBLE);
             tvOpenFolder.setVisibility(View.VISIBLE);
+            tvRender.setVisibility(View.VISIBLE);
         } else {
             tvDownload.setVisibility(View.GONE);
             tvOpenFolder.setVisibility(View.GONE);
+            tvRender.setVisibility(View.GONE);
         }
         tvDownload.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -140,6 +146,37 @@ public class HandlerPopDialog {
                         if (file.exists() && file.listFiles() != null) {
                             File[] files =  file.listFiles();
                             if (files != null && files.length == 3) {
+                                Toast.makeText(mContext, "File path:" + savePath, Toast.LENGTH_LONG).show();
+                            } else {
+                                Toast.makeText(mContext, "The folder has been deleted. Please download it again.", Toast.LENGTH_LONG).show();
+                            }
+                        } else {
+                            Toast.makeText(mContext, "The folder has been deleted. Please download it again.", Toast.LENGTH_LONG).show();
+                        }
+                    }
+                }
+            }
+        });
+
+        tvRender.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String savePath = TaskInfoAppDbUtils.getTasksByTaskId(appDb.getTaskId()).getFileSavePath();
+                if (TextUtils.isEmpty(savePath)) {
+                    Toast.makeText(mContext, "Please download it first.", Toast.LENGTH_LONG).show();
+                } else {
+                    if (popupWindow != null) {
+                        popupWindow.dismiss();
+                    }
+                    if (!TextUtils.isEmpty(savePath)) {
+                        File file = new File(savePath);
+                        if (file.exists() && file.listFiles() != null) {
+                            File[] files =  file.listFiles();
+                            if (files != null && files.length == 3) {
+                                //start render activity
+                                Intent intent = new Intent(mContext, RenderActivity.class);
+                                intent.putExtra(RenderActivity.EXTRA_FILE_PATH, savePath);
+                                mContext.startActivity(intent);
                                 Toast.makeText(mContext, "File path:" + savePath, Toast.LENGTH_LONG).show();
                             } else {
                                 Toast.makeText(mContext, "The folder has been deleted. Please download it again.", Toast.LENGTH_LONG).show();

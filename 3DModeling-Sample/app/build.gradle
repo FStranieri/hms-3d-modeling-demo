@@ -1,12 +1,13 @@
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
 
 android {
     compileSdkVersion 29
     buildToolsVersion "29.0.3"
 
     defaultConfig {
-        applicationId "com.huawei.hms.modeling3d"
-        minSdkVersion 19
+        applicationId "com.fs.sample.modeling"
+        minSdkVersion 21
         targetSdkVersion 29
         versionCode 1
         versionName "1.0"
@@ -14,10 +15,23 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        debug {
+            storeFile file("debugkeystore.jks")
+            storePassword 'Test123'
+            keyAlias 'key0'
+            keyPassword 'Test123'
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
         }
     }
 
@@ -45,6 +59,7 @@ dependencies {
     implementation 'me.jessyan:autosize:1.2.1'
     // View Binding
     api 'com.jakewharton:butterknife:10.2.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
     annotationProcessor 'com.jakewharton:butterknife-compiler:10.2.1'
     // Permission Management
     implementation 'pub.devrel:easypermissions:3.0.0'
@@ -57,5 +72,7 @@ dependencies {
     // 3D Modeling Kit SDK
     implementation 'com.huawei.hms:modeling3d-object-reconstruct:1.0.0.300'
     implementation 'com.huawei.hms:modeling3d-material-generate:1.0.0.300'
+
+    implementation "com.github.rajawali:rajawali:1.2.1970"
 }
 apply plugin: 'com.huawei.agconnect'

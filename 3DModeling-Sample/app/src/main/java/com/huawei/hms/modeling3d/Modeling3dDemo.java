@@ -18,7 +18,6 @@ package com.huawei.hms.modeling3d;
 
 import android.app.Application;
 import android.content.Context;
-import androidx.multidex.MultiDex;
 
 import com.huawei.hms.modelingresource.db.DatabaseAppUtils;
 import com.huawei.hms.modelingresource.materialdb.DatabaseMaterialAppUtils;
@@ -66,6 +65,6 @@ public class Modeling3dDemo extends Application {
     @Override
     protected void attachBaseContext(Context base) {
         super.attachBaseContext(OverseasContextWrapper.wrap(base, "en"));
-        MultiDex.install(base);
+
     }
 }
