@@ -42,17 +42,23 @@ public class RenderActivity extends AppCompatActivity implements GestureDetector
 
     private File findObjFile(String path) {
         File[] folderFiles = new File(path).listFiles();
+        File objFile = null;
 
         for (File file : folderFiles) {
             if (file.isFile()) {
                 String ext = file.getName().substring(file.getName().lastIndexOf(".") + 1);
                 if (ext.equalsIgnoreCase("obj")) {
-                    return file;
+                    objFile = file;
+                } else if (ext.equalsIgnoreCase("mtl")) {
+                    //rajawali wants that the file name ends with '_mtl' and not '.mtl'
+                    String name = file.getName().substring(0, file.getName().lastIndexOf('.'));
+                    File newMtl = new File (path, name.concat("_mtl"));
+                    file.renameTo(newMtl);
                 }
             }
         }
 
-        return null;
+        return objFile;
     }
 
     @Override
