@@ -2,8 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.huawei.hms.modeling3d">
 
-    <uses-permission android:name="android.permission.INTERNET" /> <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" /> <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -13,16 +14,15 @@
     <uses-feature android:name="android.hardware.camera.autofocus" />
 
     <application
-        android:configChanges="keyboardHidden|locale|orientation|screenLayout|screenSize|smallestScreenSize"
         android:networkSecurityConfig="@xml/network_security_config"
-        android:name="com.huawei.hms.modeling3d.Modeling3dApp"
+        android:name="Modeling3dApp"
         android:allowBackup="true"
         android:configChanges="keyboardHidden|locale|orientation|screenLayout|screenSize|smallestScreenSize"
         android:icon="@mipmap/modeling3"
         android:label="@string/splash_app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".ui.RenderActivity"></activity>
+        <activity android:name="com.huawei.hms.modeling3d.ui.RenderActivity" />
         <activity
             android:name="com.huawei.hms.modeling3d.ui.activity.MainActivity"
             android:screenOrientation="portrait"
