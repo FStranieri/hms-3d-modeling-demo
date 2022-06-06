@@ -26,7 +26,6 @@ import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.huawei.cameratakelib.utils.FileUtil;
 import com.huawei.hms.magicresource.materialdb.TaskInfoMaterialAppDb;
 import com.huawei.hms.magicresource.materialdb.TaskInfoMaterialAppDbUtils;
 import com.huawei.hms.magicresource.util.Utils;
@@ -36,11 +35,13 @@ import com.huawei.hms.modeling3d.Modeling3dApp;
 import com.huawei.hms.modeling3d.R;
 import com.huawei.hms.modeling3d.model.ConstantBean;
 import com.huawei.hms.modeling3d.ui.adapter.RecycleMaterialAdapter;
+import com.huawei.hms.modeling3d.utils.FileUtil;
 import com.huawei.hms.objreconstructsdk.Modeling3dReconstructConstants;
 import com.huawei.hms.objreconstructsdk.cloud.Modeling3dReconstructTaskUtils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Objects;
 
 public class HandlerMaterialPopDialog {
 
@@ -53,15 +54,15 @@ public class HandlerMaterialPopDialog {
     TextView tvDownload;
     ArrayList<TaskInfoMaterialAppDb> dataList;
     public Modeling3dTextureTaskUtils modeling3dTextureTaskUtils;
-    int status ;
+    int status;
 
-    public HandlerMaterialPopDialog(Context mContext, RecycleMaterialAdapter adapter, TaskInfoMaterialAppDb appDb, RecycleMaterialAdapter.DataViewHolder holder, ArrayList<TaskInfoMaterialAppDb> dataList,int status) {
+    public HandlerMaterialPopDialog(Context mContext, RecycleMaterialAdapter adapter, TaskInfoMaterialAppDb appDb, RecycleMaterialAdapter.DataViewHolder holder, ArrayList<TaskInfoMaterialAppDb> dataList, int status) {
         this.mContext = mContext;
         this.appDb = appDb;
         this.holder = holder;
         this.adapter = adapter;
         this.dataList = dataList;
-        this.status = status ;
+        this.status = status;
         contentView = LayoutInflater.from(mContext).inflate(R.layout.pop_dialog_layout, null);
         popupWindow = new PopupWindow(contentView, LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         popupWindow.setFocusable(true);
@@ -76,10 +77,10 @@ public class HandlerMaterialPopDialog {
         if (appDb.getStatus() == ConstantBean.MATERIAL_RECONSTRUCT_COMPLETED_STATUS) {
             tvDownload.setVisibility(View.VISIBLE);
             contentView.findViewById(R.id.tv_restrict_status).setVisibility(View.VISIBLE);
-            if (status== Modeling3dReconstructConstants.RestrictStatus.UNRESTRICT){
-                ((TextView)contentView.findViewById(R.id.tv_restrict_status)).setText(R.string.restricted_text);
-            }else if (status==Modeling3dReconstructConstants.RestrictStatus.RESTRICT){
-                ((TextView)contentView.findViewById(R.id.tv_restrict_status)).setText(R.string.unrestricted_text);
+            if (status == Modeling3dReconstructConstants.RestrictStatus.UNRESTRICT) {
+                ((TextView) contentView.findViewById(R.id.tv_restrict_status)).setText(R.string.restricted_text);
+            } else if (status == Modeling3dReconstructConstants.RestrictStatus.RESTRICT) {
+                ((TextView) contentView.findViewById(R.id.tv_restrict_status)).setText(R.string.unrestricted_text);
             }
         } else {
             tvDownload.setVisibility(View.GONE);
@@ -90,7 +91,12 @@ public class HandlerMaterialPopDialog {
             if (TextUtils.isEmpty(savePath)) {
                 contentView.findViewById(R.id.tv_open_file).setVisibility(View.GONE);
             } else {
-                contentView.findViewById(R.id.tv_open_file).setVisibility(View.VISIBLE);
+                File file = new File(savePath);
+                if (Objects.requireNonNull(file.listFiles()).length > 0) {
+                    contentView.findViewById(R.id.tv_open_file).setVisibility(View.VISIBLE);
+                } else {
+                    contentView.findViewById(R.id.tv_open_file).setVisibility(View.GONE);
+                }
             }
         } catch (Exception e) {
             contentView.findViewById(R.id.tv_open_file).setVisibility(View.GONE);
@@ -102,11 +108,11 @@ public class HandlerMaterialPopDialog {
                 adapter.setOnDownLoadClick(appDb, holder);
             } else {
                 File file = new File(savePath);
-                if (!file.exists() || file.listFiles() == null || file.listFiles().length != 4) {
+                if (file.exists() && Objects.requireNonNull(file.listFiles()).length > 0) {
+                    Toast.makeText(mContext, "Material file already exists", Toast.LENGTH_LONG).show();
+                } else {
                     Utils.deleteDirectory(savePath);
                     adapter.setOnDownLoadClick(appDb, holder);
-                } else {
-                    Toast.makeText(mContext, "Material file already exists", Toast.LENGTH_LONG).show();
                 }
             }
             if (popupWindow != null) {
@@ -146,11 +152,11 @@ public class HandlerMaterialPopDialog {
         });
         contentView.findViewById(R.id.tv_restrict_status).setOnClickListener(v -> {
             modeling3dTextureTaskUtils = Modeling3dTextureTaskUtils.getInstance(Modeling3dApp.app);
-            new Thread(()->{
-                if (status==Modeling3dTextureConstants.RestrictStatus.UNRESTRICT){
-                   modeling3dTextureTaskUtils.setTaskRestrictStatus(appDb.getTaskId(), Modeling3dTextureConstants.RestrictStatus.RESTRICT);
-                }else {
-                    modeling3dTextureTaskUtils.setTaskRestrictStatus(appDb.getTaskId(),Modeling3dTextureConstants.RestrictStatus.UNRESTRICT);
+            new Thread(() -> {
+                if (status == Modeling3dTextureConstants.RestrictStatus.UNRESTRICT) {
+                    modeling3dTextureTaskUtils.setTaskRestrictStatus(appDb.getTaskId(), Modeling3dTextureConstants.RestrictStatus.RESTRICT);
+                } else {
+                    modeling3dTextureTaskUtils.setTaskRestrictStatus(appDb.getTaskId(), Modeling3dTextureConstants.RestrictStatus.UNRESTRICT);
                 }
             }).start();
             if (popupWindow != null) {

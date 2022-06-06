@@ -41,7 +41,11 @@ import com.huawei.hms.modeling3d.Modeling3dApp;
 import com.huawei.hms.modeling3d.R;
 import com.huawei.hms.modeling3d.model.ConstantBean;
 import com.huawei.hms.modeling3d.ui.widget.HandlerPopDialog;
+import com.huawei.hms.modeling3d.ui.widget.PreviewConfigDialog;
+import com.huawei.hms.modeling3d.utils.BaseUtils;
+import com.huawei.hms.objreconstructsdk.cloud.Modeling3dReconstructDownloadConfig;
 import com.huawei.hms.objreconstructsdk.cloud.Modeling3dReconstructEngine;
+import com.huawei.hms.objreconstructsdk.cloud.Modeling3dReconstructPreviewConfig;
 import com.huawei.hms.objreconstructsdk.cloud.Modeling3dReconstructPreviewListener;
 import com.huawei.hms.objreconstructsdk.cloud.Modeling3dReconstructTaskUtils;
 
@@ -58,6 +62,8 @@ public class RecycleHistoryAdapter extends RecyclerView.Adapter<RecycleHistoryAd
     private OnItemClickListener mOnItemClickListener = null;
 
     private OnItemClickDownloadListener onItemClickDownloadListener = null;
+
+    PreviewConfigDialog dialog;
 
     public RecycleHistoryAdapter(ArrayList<TaskInfoAppDb> dataList, Context context) {
         this.dataList = dataList;
@@ -108,21 +114,30 @@ public class RecycleHistoryAdapter extends RecyclerView.Adapter<RecycleHistoryAd
                 holder.ivShowStatus.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                            Modeling3dReconstructEngine engine = Modeling3dReconstructEngine.getInstance(mContext);
-                            engine.previewModel(news.getTaskId(), Modeling3dApp.app, new Modeling3dReconstructPreviewListener() {
-                                @Override
-                                public void onResult(String s, Object o) {
+                        Modeling3dReconstructEngine engine = Modeling3dReconstructEngine.getInstance(mContext);
+                        dialog = new PreviewConfigDialog(mContext);
+                        dialog.show();
+                        dialog.getTvCancel().setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                dialog.dismiss();
+                                Modeling3dReconstructPreviewConfig config = new Modeling3dReconstructPreviewConfig.Factory().setTextureMode(dialog.getTextureMode()).create();
+                                engine.previewModelWithConfig(news.getTaskId(), Modeling3dApp.app, config, new Modeling3dReconstructPreviewListener() {
+                                    @Override
+                                    public void onResult(String s, Object o) {
 
-                                }
+                                    }
 
-                                @Override
-                                public void onError(String s, int i, String s1) {
-                                    ((Activity)mContext).runOnUiThread(() -> {
-                                        Toast.makeText(mContext, s1, Toast.LENGTH_LONG).show();
-                                    });
-                                }
-                            });
-                        }
+                                    @Override
+                                    public void onError(String s, int i, String s1) {
+                                        ((Activity) mContext).runOnUiThread(() -> {
+                                            Toast.makeText(mContext, s1, Toast.LENGTH_LONG).show();
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    }
                 });
                 break;
             case ConstantBean.MODELS_RECONSTRUCT_FAILED_STATUS:
@@ -135,16 +150,16 @@ public class RecycleHistoryAdapter extends RecyclerView.Adapter<RecycleHistoryAd
         holder.tvTime.setText(Utils.systemCurrentToData(news.getCreateTime()));
         holder.ivPoint.setOnClickListener(v -> {
             Modeling3dReconstructTaskUtils magic3DReconstructTaskUtils = Modeling3dReconstructTaskUtils.getInstance(Modeling3dApp.app);
-            new Thread(){
+            new Thread("magicTask") {
                 @Override
                 public void run() {
                     super.run();
                     int status = magic3DReconstructTaskUtils.queryTaskRestrictStatus(news.getTaskId());
                     if (news.getStatus() != ConstantBean.MODELS_RECONSTRUCT_START_STATUS) {
-                        ((Activity)mContext).runOnUiThread(new Runnable() {
+                        ((Activity) mContext).runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                new HandlerPopDialog(mContext, RecycleHistoryAdapter.this, news, holder, dataList,status);
+                                new HandlerPopDialog(mContext, RecycleHistoryAdapter.this, news, holder, dataList, status);
                             }
                         });
                     }
@@ -152,17 +167,23 @@ public class RecycleHistoryAdapter extends RecyclerView.Adapter<RecycleHistoryAd
             }.start();
         });
 
-        holder.tvMemory.setText("" + FileSizeUtil.getFileOrFilesSize(news.getFileUploadPath(), FileSizeUtil.SIZETYPE_MB) + "Mb");
-        File file = new File(news.getFileUploadPath());
-        File[] files = file.listFiles();
-        if (files != null && files.length > 0) {
-            for (File value : files) {
-                if (value.getPath().contains("jpg")||value.getPath().contains("png")||value.getPath().contains("Webp")) {
-                    Glide.with(mContext).load(value.getPath()).into(holder.customRoundAngleImageView);
-                    break;
+        if (news.getFileUploadPath() != null) {
+            File file = new File(news.getFileUploadPath());
+            if (file.exists()) {
+                holder.tvMemory.setText("" + FileSizeUtil.getFileOrFilesSize(news.getFileUploadPath(), FileSizeUtil.SIZETYPE_MB) + "Mb");
+                File files = new File(news.getFileUploadPath());
+                File[] fileNew = files.listFiles();
+                if (fileNew != null && fileNew.length > 0) {
+                    for (File value : fileNew) {
+                        if (value.getPath().contains("jpg") || value.getPath().contains("png") || value.getPath().contains("Webp")) {
+                            Glide.with(mContext).load(value.getPath()).into(holder.customRoundAngleImageView);
+                            break;
+                        }
+                    }
                 }
             }
         }
+
     }
 
     public void setOnItemClickListener(OnItemClickListener l) {
@@ -187,7 +208,7 @@ public class RecycleHistoryAdapter extends RecyclerView.Adapter<RecycleHistoryAd
     }
 
     public void setOnDownLoadClick(TaskInfoAppDb appDb, DataViewHolder holder) {
-        String save =  new Constants(mContext).getRgbDownFile() ;
+        String save = new Constants(mContext).getRgbDownFile();
         String downloadPath = save + System.currentTimeMillis() + "/";
         File dir = new File(downloadPath);
         if (!dir.exists()) {

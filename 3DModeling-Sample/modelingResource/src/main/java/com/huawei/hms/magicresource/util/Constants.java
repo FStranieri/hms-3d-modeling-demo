@@ -15,6 +15,7 @@
  */
 package com.huawei.hms.magicresource.util;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Environment;
 

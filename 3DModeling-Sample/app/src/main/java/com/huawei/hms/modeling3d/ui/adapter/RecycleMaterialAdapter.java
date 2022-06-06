@@ -137,15 +137,19 @@ public class RecycleMaterialAdapter extends RecyclerView.Adapter<RecycleMaterial
                 }.start();
             }
         });
-
-        holder.tvMemory.setText("" + FileSizeUtil.getFileOrFilesSize(news.getFileUploadPath(), FileSizeUtil.SIZETYPE_MB) + "Mb");
-        File file = new File(news.getFileUploadPath());
-        File[] files = file.listFiles();
-        if (files != null && files.length > 0) {
-            for (int i = 0; i < files.length; i++) {
-                if (files[i].getPath().contains("jpg") || files[i].getPath().contains("png") || files[i].getPath().contains("Webp")) {
-                    Glide.with(mContext).load(files[i].getPath()).into(holder.customRoundAngleImageView);
-                    break;
+        if (news.getFileUploadPath()!=null) {
+            File file = new File(news.getFileUploadPath());
+            if (file.exists()) {
+                holder.tvMemory.setText("" + FileSizeUtil.getFileOrFilesSize(news.getFileUploadPath(), FileSizeUtil.SIZETYPE_MB) + "Mb");
+                File files = new File(news.getFileUploadPath());
+                File[] fileNew = files.listFiles();
+                if (fileNew != null && fileNew.length > 0) {
+                    for (int i = 0; i < fileNew.length; i++) {
+                        if (fileNew[i].getPath().contains("jpg") || fileNew[i].getPath().contains("png") || fileNew[i].getPath().contains("Webp")) {
+                            Glide.with(mContext).load(fileNew[i].getPath()).into(holder.customRoundAngleImageView);
+                            break;
+                        }
+                    }
                 }
             }
         }

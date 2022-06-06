@@ -18,6 +18,8 @@ package com.huawei.hms.modeling3d.ui.activity;
 import android.app.Activity;
 import android.app.Service;
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -57,7 +59,10 @@ import com.huawei.hms.magicresource.view.CustomRoundAngleImageView;
 import com.huawei.hms.modeling3d.R;
 import com.huawei.hms.modeling3d.model.ConstantBean;
 import com.huawei.hms.modeling3d.model.UserBean;
+import com.huawei.hms.modeling3d.ui.widget.PreviewConfigDialog;
 import com.huawei.hms.modeling3d.ui.widget.ProgressCustomDialog;
+import com.huawei.hms.modeling3d.ui.widget.ShootingStepsDialog;
+import com.huawei.hms.modeling3d.ui.widget.TurntableSpeedDialog;
 import com.huawei.hms.modeling3d.ui.widget.UploadDialog;
 import com.huawei.hms.modeling3d.utils.BaseUtils;
 import com.huawei.hms.modeling3d.utils.CameraXManager;
@@ -85,12 +90,6 @@ import rx.schedulers.Schedulers;
  * @Since: 2021-04-28
  */
 public class NewScanActivity extends AppCompatActivity implements UploadDialog.OnItemSureClickListener, ProgressCustomDialog.OnItemCancelClickListener, UploadDialog.OnItemCancelClickListener, SensorEventListener {
-    private static final int UPDATE_INTERVAL = 100;
-    private long mLastUpdateTime;
-    private float mLastX;
-    private float mLastY;
-    private float mLastZ;
-    private int shakeThreshold = 1000;
 
     @BindView(R.id.img_pic)
     CustomRoundAngleImageView imgPic;
@@ -133,7 +132,7 @@ public class NewScanActivity extends AppCompatActivity implements UploadDialog.O
     private Modeling3dReconstructEngine magic3dReconstructEngine;
     ProgressCustomDialog progressCustomDialog;
 
-    int screenType = ConstantBean.SCREEN_MODEL_TYPE_ONE;
+    int screenType = ConstantBean.SCREEN_MODEL_TYPE_ZERO;
     String scanModel = ConstantBean.SCAN_MODEL_TYPE_TWO;
     Unbinder unbinder;
     String createTime;
@@ -157,7 +156,10 @@ public class NewScanActivity extends AppCompatActivity implements UploadDialog.O
 
     UserBean userBean;
     File pauseLastFile;
-
+    int stepNum;
+    public int lastNum;
+    TurntableSpeedDialog turnDialog;
+    ShootingStepsDialog stepsDialog;
     int rgbMode = Constants.RGB_MODEL;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
@@ -166,11 +168,14 @@ public class NewScanActivity extends AppCompatActivity implements UploadDialog.O
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         userBean = BaseUtils.getUser(NewScanActivity.this);
+        if (userBean.getSelectRGBMode().equals(ConstantBean.TURNTABLE_MODE)) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        }
         setContentView(R.layout.new_scan_layout);
         unbinder = ButterKnife.bind(this);
         initView();
         initPhotoSize();
-
+        hideBottomUIMenu();
     }
 
     private void initView() {
@@ -199,7 +204,26 @@ public class NewScanActivity extends AppCompatActivity implements UploadDialog.O
             } else {
                 rlTopTips.setVisibility(View.GONE);
             }
-            continuousShootingInterval = 150;
+            if (userBean.getSelectRGBMode() != null && userBean.getSelectRGBMode().equals(ConstantBean.TURNTABLE_MODE)) {
+                stepNum = 1;
+                rlTopTips.setVisibility(View.GONE);
+                llShowSteps.setVisibility(View.GONE);
+                if (continuousShootingInterval == null) {
+                    if (userBean.getSelectScanModel().equals(ConstantBean.SCAN_MODEL_TYPE_TWO)) {
+                        ivCaptureButton.setVisibility(View.GONE);
+                        turnDialog = new TurntableSpeedDialog(NewScanActivity.this);
+                        turnDialog.show();
+                    } else {
+                        showSteps();
+                    }
+                } else {
+                    tvShowSteps.setText(String.valueOf(stepNum));
+                    showSteps();
+                    rlShowNum.setVisibility(View.VISIBLE);
+                }
+            } else {
+                continuousShootingInterval = 500;
+            }
 
         }
     }
@@ -210,9 +234,15 @@ public class NewScanActivity extends AppCompatActivity implements UploadDialog.O
     }
 
 
-    @OnClick({R.id.tv_sure, R.id.iv_back, R.id.rl_upload_doing, R.id.capture_button})
+    @OnClick({R.id.tv_sure, R.id.iv_back, R.id.rl_upload_doing, R.id.capture_button, R.id.iv_right})
     public void onClick(View view) {
         switch (view.getId()) {
+
+            case R.id.iv_right:
+                Intent intent = new Intent(NewScanActivity.this, SettingModelActivity.class);
+                startActivity(intent);
+                finish();
+                break;
 
             case R.id.tv_sure:
                 userBean.setShowScanTips(false);
@@ -392,10 +422,23 @@ public class NewScanActivity extends AppCompatActivity implements UploadDialog.O
 
         imgPic.setImageBitmap(BitmapFactory.decodeFile(mFile.getAbsolutePath()));
         tvPhotoNum.setText(String.valueOf(currentPhotoNum));
-        if (currentPhotoNum < minPhotoNum) {
-            rlUploadDoing.setVisibility(View.GONE);
+        if (userBean.getSelectRGBMode() != null && userBean.getSelectRGBMode().equals(ConstantBean.TURNTABLE_MODE)) {
+            if (userBean.getSelectScanModel().equals(ConstantBean.SCAN_MODEL_TYPE_TWO)) {
+                showTurntableTips(currentPhotoNum);
+                if (currentPhotoNum >= 108 && currentPhotoNum <= maxPhotoNum) {
+                    rlUploadDoing.setVisibility(View.VISIBLE);
+                } else {
+                    rlUploadDoing.setVisibility(View.GONE);
+                }
+            } else {
+                showTurntableTipsOnePoint(currentPhotoNum);
+            }
         } else {
-            rlUploadDoing.setVisibility(View.VISIBLE);
+            if (currentPhotoNum < minPhotoNum) {
+                rlUploadDoing.setVisibility(View.GONE);
+            } else {
+                rlUploadDoing.setVisibility(View.VISIBLE);
+            }
         }
         pauseLastFile = mFile;
     }
@@ -476,6 +519,11 @@ public class NewScanActivity extends AppCompatActivity implements UploadDialog.O
 
             @Override
             public void onNext(Integer result) {
+                if (userBean.getSelectRGBMode() != null && userBean.getSelectRGBMode().equals(ConstantBean.TURNTABLE_MODE)) {
+                    stepNum = 1;
+                    tvShowSteps.setText(String.valueOf(stepNum));
+                    ivCaptureButton.setVisibility(View.GONE);
+                }
                 if (result == 1) {
                     Toast.makeText(NewScanActivity.this, "Cancel failed.", Toast.LENGTH_SHORT).show();
                 } else if (result == 0) {
@@ -488,13 +536,29 @@ public class NewScanActivity extends AppCompatActivity implements UploadDialog.O
 
     @Override
     public void onClick() {
-        progressCustomDialog = new ProgressCustomDialog(NewScanActivity.this, ConstantBean.PROGRESS_CUSTOM_DIALOG_TYPE_ONE, getString(R.string.doing_post_text));
-        progressCustomDialog.show();
-        progressCustomDialog.setListener(NewScanActivity.this);
-        progressCustomDialog.setCanceledOnTouchOutside(false);
+        PreviewConfigDialog dialog = new PreviewConfigDialog(NewScanActivity.this);
+        dialog.show();
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.getTvCancel().setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                progressCustomDialog = new ProgressCustomDialog(NewScanActivity.this, ConstantBean.PROGRESS_CUSTOM_DIALOG_TYPE_ONE, getString(R.string.doing_post_text));
+                progressCustomDialog.show();
+                progressCustomDialog.setListener(NewScanActivity.this);
+                progressCustomDialog.setCanceledOnTouchOutside(false);
+                initModeTask(dialog.getTextureMode());
+                dialog.dismiss();
+            }
+        });
+
+    }
+
+
+    public void initModeTask(Integer textureMode) {
         Observable.create((Observable.OnSubscribe<Modeling3dReconstructInitResult>) subscriber -> {
             Modeling3dReconstructSetting setting = new Modeling3dReconstructSetting.Factory()
                     .setReconstructMode(rgbMode)
+                    .setTextureMode(textureMode)
                     .create();
             magic3dReconstructInitResult = magic3dReconstructEngine.initTask(setting);
             String taskId = magic3dReconstructInitResult.getTaskId();
@@ -523,7 +587,6 @@ public class NewScanActivity extends AppCompatActivity implements UploadDialog.O
                 Toast.makeText(NewScanActivity.this, result.getRetMsg(), Toast.LENGTH_SHORT).show();
             }
         });
-
     }
 
     private final Modeling3dReconstructUploadListener uploadListener = new Modeling3dReconstructUploadListener() {
@@ -539,10 +602,10 @@ public class NewScanActivity extends AppCompatActivity implements UploadDialog.O
                 TaskInfoAppDbUtils.updateTaskIdAndStatusByPath(saveInnerPath, taskId, 1);
                 NewScanActivity.this.runOnUiThread(() -> {
                     clearImage();
-                    if (userBean.getSelectRGBMode() != null && userBean.getSelectRGBMode().equals(ConstantBean.NORMAL_MODE)) {
-                        if (ivCaptureButton != null) {
-                            ivCaptureButton.setVisibility(View.VISIBLE);
-                        }
+                    if (userBean.getSelectRGBMode() != null && userBean.getSelectRGBMode().equals(ConstantBean.TURNTABLE_MODE)) {
+                        stepNum = 1;
+                        tvShowSteps.setText(String.valueOf(stepNum));
+                        ivCaptureButton.setVisibility(View.GONE);
                     }
                     progressCustomDialog.dismiss();
                     Toast.makeText(NewScanActivity.this, getString(R.string.upload_text_success), Toast.LENGTH_SHORT).show();
@@ -597,9 +660,110 @@ public class NewScanActivity extends AppCompatActivity implements UploadDialog.O
         ivCaptureButton.setImageResource(R.drawable.capture_photo_icon);
         isPause = false;
     }
+
+    public void getTurnTableTime(int parseInt) {
+        turnDialog.dismiss();
+        continuousShootingInterval = (int) ((float) parseInt * 0.68 / 24 * 1000);
+        showSteps();
+    }
+
+    public void showSteps() {
+
+        stepsDialog = new ShootingStepsDialog(NewScanActivity.this, stepNum);
+        stepsDialog.setCanceledOnTouchOutside(false);
+        llShowSteps.setVisibility(View.VISIBLE);
+        stepsDialog.show();
+    }
+
+    public void doNextStep() {
+        if (userBean.getSelectScanModel().equals(ConstantBean.SCAN_MODEL_TYPE_TWO)) {
+            isPause = false;
+            stepNum++;
+            saveInnerPath = new Constants(NewScanActivity.this).getCaptureImageFile() + "model" + createTime;
+            File file = new File(saveInnerPath);
+            if (!file.exists()) {
+                file.mkdir();
+            }
+            initTakePhoto(scanModel);
+            isPause = true;
+        } else {
+            stepNum++;
+            saveInnerPath = new Constants(NewScanActivity.this).getCaptureImageFile() + "model" + createTime;
+            File file = new File(saveInnerPath);
+            if (!file.exists()) {
+                file.mkdir();
+            }
+            lastNum = currentPhotoNum;
+        }
+    }
+
+    public void showTurntableTips(int num) {
+        if (num == 24 || num == 48 || num == 60 || num == 84 || num == 108) {
+            isPause = false;
+
+            if (num >= 108) {
+                ivCaptureButton.setVisibility(View.VISIBLE);
+                onCapturePause();
+            } else {
+                if (userBean.getSelectScanModel().equals(ConstantBean.SCAN_MODEL_TYPE_ONE)) {
+                    ivCaptureButton.setVisibility(View.VISIBLE);
+                } else {
+                    ivCaptureButton.setVisibility(View.GONE);
+                }
+                stepsDialog = new ShootingStepsDialog(NewScanActivity.this, stepNum);
+                stepsDialog.setCanceledOnTouchOutside(false);
+                if (stepNum <= 5) {
+                    tvShowSteps.setText(String.valueOf(stepNum));
+                }
+                stepsDialog.show();
+            }
+
+        }
+
+    }
+
+    public void showTurntableTipsOnePoint(int num) {
+
+        if (stepNum == 4) {
+            if (num >= lastNum + 12 && num <= lastNum + 20) {
+                rlUploadDoing.setVisibility(View.VISIBLE);
+                tvUpload.setText(R.string.finish_text);
+
+            }
+        } else {
+            if (num >= lastNum + 24 && num <= lastNum + 40) {
+                rlUploadDoing.setVisibility(View.VISIBLE);
+                if (stepNum == 6) {
+                    tvUpload.setText(R.string.upload_text);
+                } else {
+                    tvUpload.setText(R.string.finish_text);
+                }
+
+            }
+        }
+
+    }
+
     @Override
     public void onBackPressed() {
         super.onBackPressed();
         saveData();
+    }
+
+    /**
+     * Hide virtual keys and go full screen
+     */
+    protected void hideBottomUIMenu() {
+        //Hide virtual keys and go full screen
+        if (Build.VERSION.SDK_INT > 11 && Build.VERSION.SDK_INT < 19) {
+            View v = this.getWindow().getDecorView();
+            v.setSystemUiVisibility(View.GONE);
+        } else if (Build.VERSION.SDK_INT >= 19) {
+            //for new api versions.
+            View decorView = getWindow().getDecorView();
+            int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_FULLSCREEN;
+            decorView.setSystemUiVisibility(uiOptions);
+        }
     }
 }
